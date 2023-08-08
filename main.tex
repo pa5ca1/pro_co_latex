@@ -1,0 +1,76 @@
+\documentclass{scrartcl}
+    % General document formatting
+    \usepackage[margin=0.7in]{geometry}
+    \usepackage[parfill]{parskip}
+    \usepackage[utf8]{inputenc}
+    \usepackage[english]{babel}
+    
+    % Related to math
+    \usepackage{amsmath,amsfonts,amssymb,amsthm, bm}
+
+    % Use of \autoref
+    \usepackage{hyperref}
+    % Using \enquote{}
+    \usepackage{csquotes}
+    % SI-Units
+    \usepackage{siunitx}
+    % TODOS
+    \usepackage{todonotes}
+    % Using [h] for figures etc.
+    \usepackage{here}
+
+    % Using underscores _
+    \usepackage{textcomp}
+
+    % Using subcaption for multiple figues side by side
+    \usepackage{caption}
+    \usepackage{subcaption}
+
+    % For tables?
+    \usepackage{booktabs}
+
+    % For source code
+    \usepackage{matlab-prettifier}
+    \lstset{
+numbers=left, 
+numberstyle=\small, 
+numbersep=8pt, 
+frame = single, 
+language=Pascal, 
+framexleftmargin=15pt}
+
+    \setcounter{MaxMatrixCols}{20}
+
+
+% For titlepage
+\title{Process Control Project}
+\subtitle{Summer semester 2023}
+\date{\today}
+\author{Pascal Bock \\ Group: ET\textunderscore STK1}
+
+
+
+\begin{document}
+
+
+
+\maketitle
+
+\tableofcontents
+
+%% INSERTS
+
+\include{src/00_intro}
+\include{src/01_system_analysis}
+\include{src/02_controller_design}
+
+%\include{src/1_system_derivation}
+%\include{src/2_controler_design}
+%\include{src/3_model_discretization}
+%\include{src/4_simulation_results}
+
+\bibliographystyle{plain}
+\bibliography{bibliography/my_bib.bib}
+
+
+\end{document}

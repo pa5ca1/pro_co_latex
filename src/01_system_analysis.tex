@@ -1,0 +1,130 @@
+
+\section{System Analysis} \label{sec:analysis}
+
+This section deals with the analysis of the aforementioned system of a wind turbine.
+First, the description of the ODE system, which is insufficient for an implementation, is presented (\autoref{sec:analysis:ODE}) and the problems encountered are briefly described.
+
+Second, the implementation of the system via transfer function is introduced \autoref{sec:analysis:tf}.
+All important steps to implement the system in Matlab are shown.
+By using figures published by Fragoso et al.– \cite{Fragoso_et_al_2017} the implementation in Matlab is verified.
+
+The following chapter (\autoref{sec:condes}) is dealing with controller design. One important step of controller design is the relative gain array, which is conducted at the end of tis section.
+
+\subsection{Simulation of ODE system} \label{sec:analysis:ODE}
+
+Fragoso et al.~ \cite{Fragoso_et_al_2017} present a system of ODE for the wind turbine model.
+As described in \autoref{sec:intro:model_eq} the model is subdivided into two parts.
+The electrical subsystem is based in on two algebraic equations (\autoref{eq:intro:tau_em}, \autoref{eq:intro:P_g}).
+
+For the mechanical part an ODE is given
+\begin{align}
+    J_t \frac{d \omega_t}{dt} = \tau_a - \tau_{em}, \label{eq:analysis:ODE_mechanical}
+\end{align}
+where $\tau_a$ is the aerodynamic torque and defined as
+\begin{align}
+    \tau_a = \frac{1}{2} \rho \pi R^3 \frac{C_p\left( \lambda, \beta\right)}{\lambda} v^2.
+\end{align}
+The power coefficient $C_p$ is only described by a figure (see Figure 4 in \cite{Fragoso_et_al_2017}).
+In Fragosos work \cite[p. 54 ff.]{Fragoso_PhD_2016} a function for $C_p$ is derived and also a figure shows the global course of the function (see Figure 3.8, p. 56).
+In this function nine heuristic parameters are used to determine the characteristics.
+It is unclear if this function is also used in the work of Fragoso et al.~ or not.
+
+In the appendix of Fragosos PhD-thesis there are tabulated value for $C_p$.
+These were implemented as a lookuptable in Matlab.
+By using the lookup table, values for $C_p$ could be determined, but the solutions of the ODE were not in a realistic range of values.
+
+\begin{lstlisting}[style=Matlab-editor,caption={Matlab function for lookuptable. With this function we can get a corresponding $C_p$ value for given $\beta$ and $\lambda$. The \texttt{.csv}-file can be found in the GitHub repository under},captionpos=b,label={list:analysis:lookup}]
+% Loading tabulated values as .csv file
+p.lookup = readtable('lookuptable_c_p.csv');
+% Setting corresponding column names 
+p.lookup.Properties.VariableNames = {'wind_speed','rotor_speed','U','i_a','P_e','P_m','lambda','C_p','C_q','beta'};
+
+% Looking up values for values of lambda and beta
+function C_p = power_coefficient(lambda,beta,lookup)
+    C_p = interp1(lookup.lambda(lookup.beta==beta),lookup.C_p(lookup.beta==beta),lambda);
+end
+\end{lstlisting}
+
+Even if it is possible to get correct values for $C_p$, we still have only one ODE and a algebraic equation.
+This is not representing a systems with two systems states.
+
+Due to the problems mentioned here, the representation and solution of the system in state space was not pursued further and the transfer function mentioned in the Fragose et al.~ was used instead.
+
+\subsection{Implementation of transfer function model} \label{sec:analysis:tf}
+
+All controllers will be designed based on a linear model.
+For different wind speeds $v$ Fragoso et al.~ identified five different linear models.
+The pitch angel $\beta$ and the duty cycle $\alpha$ are the systems states.
+The outputs are the rotational speed of the blade $\omega_r$ and the generated electric power $P_g$.
+\begin{align}
+    \begin{pmatrix}
+        \omega_r \\
+        P_g
+      \end{pmatrix} = 
+      G(s) 
+      \begin{pmatrix}
+        \beta \\
+        \alpha
+      \end{pmatrix} + G_D(s) v
+\end{align}
+
+The transferfunctions $G$ and $G_D$ where identified for windspeed $v=\left[6,7,8,9,10 \right] \si{\metre\per\second}$.
+The results can be found in \cite[Table 2]{Fragoso_et_al_2017} and will not be reprinted here.
+
+\begin{table}[H]
+    \label{tab:analysis:import_var}
+    \caption{Compilation of the most important variables, their meaning, unit and value range. The value ranges in italics are estimated values derived from figures. In addition, only the deviation $\Delta v$ is given, as we consider the disturbance in the following only as a deviation from zero. That is why we also consider a maximum value range between -1 and 1, as we would enter the \textit{domain} of another transfer function for larger values.}
+    \centering
+    \begin{tabular}{cllcc} \toprule
+        Variable & Name & Interpration & Unit & Range \\ \midrule
+        $\Delta v$ & change in windspeed & disturbance  & \si{\metre\per\second} & $\mathit{\left[-1,1\right]}$\\
+        $\beta$ & pitch angle & state & \si{\degree}& $\left[0,25\right]$ \\
+        $\alpha$ & duty cycle& state & 1 & $\left[0,1\right]$\\
+        $\omega_r$ & rotational speed of blade & input & rpm & $\mathit{\left[1400,2000 \right]}$  \\
+        $P_g$ &generated electric power &input & \si{\watt} &  $\mathit{\left[3,9 \right]}$\\ \bottomrule
+    \end{tabular}
+\end{table}
+
+\subsubsection*{Implementation in Matlab}
+
+To generate the transfer functions in Matlab the \texttt{tf}-command and the \texttt{table} function are used.
+
+\begin{lstlisting}[style=Matlab-editor,caption={},captionpos=b,label={list:analysis:tf}]
+
+% Wind speed: 6 m/s
+G_S_num_6 = {-8.059,-405.4;-0.0081479,4.4195};
+G_S_denom_6 = {[75.27,17.35,1],[28.25, 16.47, 1];[0, 16.873, 1],[0, 1.7589, 1]};
+G_D_num_6 = {364.9; 1.139};
+G_D_denom_6 = {[118.3, 21.76, 1];[65.28, 17.09, 1]};
+
+... Wind speeds 7,8,9 an 10 m/s ...
+
+% Making a table to store all transfer_function
+varNames = ["wind_speed","G_S_numerator","G_S_denominator","G_D_numerator","G_D_denominator","G_S","G_D","RGA"];
+table_tf = table;
+
+% Filling the table with numerator and denominator
+table_tf(1,1:5) = {6,G_S_num_6,G_S_denom_6,G_D_num_6,G_D_denom_6};
+...
+table_tf(5,1:5) = {10,G_S_num_10,G_S_denom_10,G_D_num_10,G_D_denom_10};
+table_tf.Properties.VariableNames = varNames(1:5);
+
+% For loop for creating transfer function by using tf-command
+for i = 1:5
+    table_tf{i,6} = {tf(table_tf{i,"G_S_numerator"}{:},table_tf{i,"G_S_denominator"}{:})};
+    table_tf{i,7} = {tf(table_tf{i,"G_D_numerator"}{:},table_tf{i,"G_D_denominator"}{:})};
+    table_tf{i,8} = {NaN};
+end
+
+% Naming the columns in the table
+table_tf.Properties.VariableNames = varNames;
+
+\end{lstlisting}
+
+\subsubsection{Verifying the implementation}
+
+\subsection{Relative Gain Array}  \label{sec:analysis:RGA}
+
+\subsubsection*{Implementation in Matlab}
+
+\subsubsection*{Results of RGA}
