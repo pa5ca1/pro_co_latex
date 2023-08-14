@@ -1,0 +1,73 @@
+\section{Matlab Code}
+
+\subsection{Ziegler-Nichols-Methods} \label{app:ZN}
+
+\subsubsection{Computing infliction point} \label{app:ZN:infl_point}
+
+\begin{lstlisting}[style=Matlab-editor,caption={Matlab code for calculating the infliction point.},captionpos=b,label={list:app:infliction_point}]
+function [slope, intcpt] = calc_infliction_point_slope(y,t)
+    %% Find the inflection point and tangent
+    % Source: https://de.mathworks.com/matlabcentral/answers/295156-how-to-find-the-inflection-point-of-a-curve-in-matlab
+    % gradient of step response
+    dydt = gradient(y);
+    % Find y and t of highest gradient
+    % Get only the unique values
+    [dydt,i_unique,~] = unique(dydt,'stable');
+    t_out = t(i_unique);
+    y_out = y(i_unique);
+    t_infl = interp1(dydt, t_out, max(dydt));
+    y_infl = interp1(t_out, y_out, t_infl);
+    % Calculate slope
+    slope  = interp1(t_out, dydt, t_infl);
+    % Find y-interception
+    intcpt = y_infl - slope*t_infl;
+
+end
+\end{lstlisting}
+
+\subsubsection{Computing control parameters} \label{app:ZN:control_para}
+
+\begin{lstlisting}[style=Matlab-editor,caption={Computation of $T_d$, $T$ and $K$ in Matlab.},captionpos=b,label={list:app:controller_parameters}]
+function [K, T, T_d,t_interception] = calc_gain_time_const_time_delay(y,t,tngt)
+
+    % %Find the T_d and T
+    % Calculate the intercept of slope with K
+    K = max(y);
+    % Get t-value when tangents hits K
+    % First we calculate the index in t. With this index the time t
+    % can be calculated
+    t_index_interception = find(tngt>=max(y),1,'first');
+    t_interception = t(t_index_interception);
+    t_index_T_d = find(tngt>=0,1,'first');
+    % Calculation of T_d and T
+    T_d = t(t_index_T_d);
+    T = t_interception-T_d;
+    
+    
+end
+\end{lstlisting}
+
+
+\subsubsection{Two-point method} \label{app:ZN:2p_method}
+
+\begin{lstlisting}[style=Matlab-editor,caption={Implementation of two-point method in Matlab.},captionpos=b,label={list:app:two_point_method}]
+[y,t] = step(G,t_linspace);
+% Get maximum value of y
+y_inf = max(y);
+y_0 = min(y);
+y_hat =  y_inf-y_0;
+y_28 = y_0 + 0.28 * y_hat;
+y_63 = y_0 + 0.63 * y_hat;
+% Making y unique valued
+[y_out,i_unique,~] = unique(y,'stable');
+t_out = t(i_unique);
+% Calculation of time points where y reaches 28/63 percent
+t_28 = interp1(y_out,t_out,y_28);
+t_63 = interp1(y_out,t_out,y_63);
+
+%% Calculation of T, T_d
+T = 3/2 * (t_63-t_28);
+T_d = t_63 - T;
+K = y_inf;
+
+\end{lstlisting}
