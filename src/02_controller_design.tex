@@ -1,1 +1,179 @@
 \section{Controller Design} \label{sec:condes}
+
+In the previous chapters only the open loop behaviour was analyzed.
+This section focuses on the controller design and closing the loops.
+Three different techniques for controller design are described.
+First, the Ziegler-Nichols method is shown (\autoref{sec:condes:ZN}).
+For this method, two different approximations for the required \textbf{f}irst-\textbf{o}rder-\textbf{p}lus-\textbf{t}ime-\textbf{d}elay transfer function (FOPTD) are used.
+The max slope method (\autoref{sec:condes:ZN:maxS}) uses the inflection point of the step resoponse to determine the control parameters.
+In contrast, the two-point method (\autoref{sec:condes:ZN:2p}) does not use derivatives, but the points in time at which the step response has assumed 28\% or 63\% of its maximum value.
+As a result, the method is also considered to be numerically more stable.
+
+Second, the T-sum method (\autoref{sec:condes:Tsum}) is used to determine control parameters for a PID-controller.
+Here, the parameters are estimated by using the area under the s-shaped step response.
+
+\begin{figure}[H]
+    \centering
+
+    \subcaptionbox{Max slope approximation\cite[Lecture 6, slide 12]{Dissli_Kienle_2023} \label{fig:condes:different_methods_maxSlope}}[.45\textwidth]{\includegraphics[width=1\linewidth]{fig/Dissli_Kienle_max_slope_2023.png}}
+%
+    \subcaptionbox{T-sum method \cite[Lecture 6, slide 17]{Dissli_Kienle_2023} \label{fig:condes:different_methods_Tsum}}[.45\textwidth]{\includegraphics[width=1\linewidth]{fig/Dissli_Kienle_T_sum_2023.png}}
+\\
+\subcaptionbox{Two-point approximation \cite[Lecture 4, slide 6]{Dissli_Kienle_2023}  \label{fig:condes:different_methods_2p}}[.7\textwidth]{\includegraphics[width=1\linewidth]{fig/Dissli_Kienle_two_point_2023.png}}
+    \caption{Visualization of two different approximation methods for Ziegler-Nichols controller design and the T-sum method for control parameter estimation. All plots from \cite{Dissli_Kienle_2023}}
+    \label{fig:condes:different_methods}
+\end{figure}
+
+
+Third, the relay-feedback method (\autoref{sec:condes:Relayfeedback}) as an example of an auto-tuning methods characterizes the control parameters.
+
+In the end all methods are discussed and the robustness of some methods is shown (\autoref{sec:condes:discussion}).
+
+
+
+\subsection{Ziegler-Nichols open loop method}\label{sec:condes:ZN}
+
+The Ziegler-Nichols open loop method characterises assumes an s-shape step response and an underlying first-order-plus-time-delay transfer function.
+Looking at the given transfer function by Fragoso et al.~ (\cite[Table 2]{Fragoso_et_al_2017}), we do not have this behaviour.
+Therefore, we need to approximate a FOPTD transfer function.
+This can be done with two different approaches.
+First, the max slope approximation is used for controller design and second, the two-point method determines the controller's parameters.
+
+In the following two subsection both methods and their Matlab implementation is discussed. 
+
+
+\subsubsection{Max slope approximation} \label{sec:condes:ZN:maxS}
+
+The max slope method focuses around the inflection point of the unit step response.
+
+\begin{lstlisting}[style=Matlab-editor,caption={This code snippet show the general way of calculating the control parameters with the max slope method.},captionpos=b,label={list:condes:maxS}]
+[y,t_out] = step(G,t_linspace);
+[slope, intcpt] = calc_infliction_point_slope(y,t_out);
+tngt = slope*t_out + intcpt;
+[K, T, T_d, t_inter] = calc_gain_time_const_time_delay(y,t_out,tngt);
+\end{lstlisting}
+
+In line 1 the step response of a transfer function $G$ with the matlab built-in-function \texttt{step()} is calculated.
+\texttt{calc\_infliction\_point\_slope()} calculates the infliction point and returns the slope (\texttt{slope}) and y-interception (\texttt{intcpt}).
+With these two values the tangent (\texttt{tngt}) is calculates in line 3 and in line 4 the variables needed for calculation of the control parameters are returned (\texttt{calc\_gain\_time\_const\_time\_delay()}).
+
+The \texttt{calc\_infliction\_point\_slope()}-function calculates the gradient using Matlabs \texttt{gradient()}-function and computes slope and y-interception from this.
+
+In \texttt{calc\_gain\_time\_const\_time\_delay()} the values for the maximal gain $K$, the time delay $T_d$, the time constant $T$ and the time of interception is computed and returned.
+
+The complete functions can be found in the appendix (\autoref{app:ZN:infl_point}, \autoref{app:ZN:control_para}).
+
+\subsubsection{Two-point approximation} \label{sec:condes:ZN:2p}
+
+The aforementioned method uses the \texttt{gradient()}-function, which is sensitive to noise and outliers.
+A more robust approach is the two-point method.
+In \autoref{fig:condes:different_methods_2p} we see the points where 28\% and 63\% of $y_{\infty}$ is reached.
+These values are calculated via Matlab and used to compute $T$, $T_d$ and $K$.
+\begin{align}
+    T &= \frac{2}{3} \left( t_{63} - t_{28} \right) \\
+    T_d &= t_{63} - T \\
+    K &= y_{\infty}
+\end{align}
+
+
+
+In matlab the computation relies on the \texttt{interp1()}-function for getting the $t$-values after calculation of $y_{28,63}$.
+
+\begin{lstlisting}[style=Matlab-editor,caption={This code snippet shows the general way of calculating $t_{28}$ and $t_{63}$.},captionpos=b,label={list:condes:maxS}]
+[y,t] = step(G,t_linspace);
+% Get maximum value of y
+y_inf = max(y);
+y_0 = min(y);
+y_hat =  y_inf-y_0;
+y_28 = y_0 + 0.28 * y_hat;
+y_63 = y_0 + 0.63 * y_hat;
+% Making y unique valued
+[y_out,i_unique,~] = unique(y,'stable');
+t_out = t(i_unique);
+% Calculation of time points where y reaches 28/63 percent
+t_28 = interp1(y_out,t_out,y_28);
+t_63 = interp1(y_out,t_out,y_63);
+\end{lstlisting}
+
+First, the y-values for 28\% and 63\% are computed in matlab.
+Second, the corresponding $t$-values are calculated using the built-in \texttt{interp1()}-function for interpolation.
+In line 9 the \texttt{unique()}-function returns all values of \texttt{y} without repetition.
+This step is important for the later interpolation.
+
+
+\subsubsection{Results} \label{sec:condes:ZN:results}
+
+Before presenting the results an Matlab specific issue in PID controller implementation must be adressed.
+The Simulink PID-block uses the another notation for the PID controller's paraemter, therefore a conversion is needed. 
+This conversion is shown in \autoref{list:condes:conersion_PID_para}.
+
+
+\begin{lstlisting}[style=Matlab-editor,caption={Conversion of the parameters calculated by the previously mentioned algorithms and the values required for Simulink PID block in Matlab.},captionpos=b,label={list:condes:conersion_PID_para}]
+function PID_ideal = matlab_PID_paremters(PID)
+    % Conversion for Simulink PID-block
+    PID_ideal.P = PID.K_p;
+    PID_ideal.I =1/PID.T_I;
+    PID_ideal.D = PID.T_D;
+end
+\end{lstlisting}
+
+
+\begin{table}[H]
+    \caption{Results of PID controller design using Ziegler-Nichols.}
+    \centering
+    \begin{tabular}{cccccc} \toprule
+        Approximation & $v_{wind}$ &$P$ & $I$ & $D$ & Input-Output pair \\ \midrule
+        max-slope     & 7 & -1.0567 & 6.0606  & 1.5152 & 1-1 \\
+        two-point     & 7 & -0.4121 & 10.1010 & 2.5253 & 1-1 \\
+        max-slope     & 8 & -1.0781 & 8.0808  & 2.0202 & 1-1 \\
+        two-point     & 8 & -0.4554 & 12.1212 & 3.0303 & 1-1 \\
+        max-slope     & 9 & -0.1923 & 8.0808  & 2.0202 & 1-1 \\
+        two-point     & 9 & -0.0844 & 12.1212 & 3.0303 & 1-1 \\ \bottomrule
+    \end{tabular}
+    \label{tab:condes:ZN:results}
+\end{table}
+
+\begin{figure}[H]
+    \centering
+
+    \subcaptionbox{Max slope \label{fig:condes:ZN:results:max_slope_example}}[.48\textwidth]{\includegraphics[width=1\linewidth, scale=1, trim=75 230 55 120,clip]{fig/G_11_max_slope_8ms.pdf}}
+%
+    \subcaptionbox{Two-point \label{fig:condes:ZN:results:2p_example}}[.48\textwidth]{\includegraphics[width=1\linewidth, scale=1, trim=75 230 55 120,clip]{fig/G_11_2p_8ms.pdf}}
+
+    \caption{Approximation of the transfer function at a wind speed of \SI{8}{\metre\per\second} and using the input-output pair 1-1}
+    \label{fig:condes:ZN:results:example_plots}
+\end{figure}
+
+In \autoref{fig:condes:ZN:results:example_plots} we can clearly see the different approximation.
+This results in different control parameters in \autoref{tab:condes:ZN:results}.
+Still, the sign of all control parameters and the differences are small.
+When the wind speed is changed (using a different transfer function) the proportional factor $P$ of the PID controller changes.
+The integral $I$ and derivative $D$ terms seem be constant.
+
+\subsection{T-Sum method} \label{sec:condes:Tsum}
+
+
+\begin{table}[H]
+    \caption{Results of PID controller design using T-Sum method.}
+    \centering
+    \begin{tabular}{ccccc} \toprule
+        $v_{wind}$ &$P$ & $I$ & $D$ & Input-Output pair \\ \midrule
+        7 & 0.1724 & 0.6737 & 0.1687 & 2-2 \\
+        8 & 0.1479 & 0.6737 & 0.1687 & 2-2 \\ 
+        9 & 0.1240 & 0.6737 & 0.1687 & 2-2 \\ \bottomrule
+    \end{tabular}
+    \label{tab:condes:tsum:results}
+\end{table}
+
+\begin{figure}[H]
+    \center
+    \includegraphics[scale=0.7,trim=60 200 50 150,clip]{fig/G_22_T_sum_8ms.pdf}
+    \caption{Visualization of the T-sum method for controller design. A controller for the input-output pair 2-2 is designed by using the transfer function for a windspeed of \SI{8}{\metre\per\second}.}
+    \label{fig:condes:tsum:example}
+\end{figure}
+
+\subsection{Relay-feedback method} \label{sec:condes:Relayfeedback}
+
+\subsection{Implementation in Matlab} \label{sec:condes:implementation_matlab}
+
+\subsection{Discussion of different methods} \label{sec:condes:discussion}
