@@ -90,7 +90,6 @@ The results can be found in \cite[Table 2]{Fragoso_et_al_2017} and will not be r
 To generate the transfer functions in Matlab the \texttt{tf}-command and the \texttt{table} function are used.
 
 \begin{lstlisting}[style=Matlab-editor,caption={},captionpos=b,label={list:analysis:tf}]
-
 % Wind speed: 6 m/s
 G_S_num_6 = {-8.059,-405.4;-0.0081479,4.4195};
 G_S_denom_6 = {[75.27,17.35,1],[28.25, 16.47, 1];[0, 16.873, 1],[0, 1.7589, 1]};
@@ -102,6 +101,8 @@ G_D_denom_6 = {[118.3, 21.76, 1];[65.28, 17.09, 1]};
 % Making a table to store all transfer_function
 varNames = ["wind_speed","G_S_numerator","G_S_denominator","G_D_numerator","G_D_denominator","G_S","G_D","RGA"];
 table_tf = table;
+% Naming the columns in the table
+table_tf.Properties.VariableNames = varNames;
 
 % Filling the table with numerator and denominator
 table_tf(1,1:5) = {6,G_S_num_6,G_S_denom_6,G_D_num_6,G_D_denom_6};
@@ -115,16 +116,113 @@ for i = 1:5
     table_tf{i,7} = {tf(table_tf{i,"G_D_numerator"}{:},table_tf{i,"G_D_denominator"}{:})};
     table_tf{i,8} = {NaN};
 end
-
-% Naming the columns in the table
-table_tf.Properties.VariableNames = varNames;
-
 \end{lstlisting}
+
+For each transfer function modeling the system behaviour for different wind speeds we have a numerator and denominator for the systems transfer function $G$ and the disturbance system $G_D$.
+Those are stored as arrays \texttt{G\_num\_6}, \texttt{G\_D\_denom\_6}, etc.~, where the 6 at the end depicting the transfer function for a wind speed of $\SI{6}{\metre \per \second}$.
+
+In line 17 ff. the numerator and denominator of all transfer function are stored in the table initialized in line 12.
+Using the \texttt{tf}-command inside a \texttt{for-loop} (line 23 ff.) the transfer function is defined.
+In line 14 every column of the table gets a name.
 
 \subsubsection{Verifying the implementation}
 
+The goal of verification is the recreation of relative step responses shown by Fragoso et al.~(\autoref{fig:analysis:fig_step_response}).
+The figure is used as a benchmark.
+If the global course of the step response can be readjusted, then one can assume that the model is implemented correctly.
+
+\begin{figure}[H]
+    \center
+    \includegraphics[scale=0.5]{fig/Fragoso_et_al_2017_fig6.png}
+    \caption{The figure presented by \cite{Fragoso_et_al_2017} shows the relative step response of the identified system (dashed line) and the real system (solid) line.}
+    \label{fig:analysis:fig_step_response}
+\end{figure}
+
+The six figures are labeled as $g_{ij}$ as changing input $i$ and showing the influence on output $j$.
+The bottom two are referring to the influence of disturbance changes (changes in wind speed) when inputs are changed.
+Unfortunately the exact values are not given in the paper and therefore must be reverse engineered.
+
+\begin{table}[H]
+    \caption{The tables shows the influence of an input to a single output. The table can be seen as an other way of displaying the results from \autoref{fig:analysis:fig_step_response}.}
+    \centering
+    \begin{tabular}{ccccc} \toprule
+        Figure & Input & $\Delta$ & Output & $\Delta$ \\ \midrule
+        $g_{11}$ & $\beta$    & \SI{7}{\degree}               & $\omega_r$  & $\SI{-70}{rpm}$ \\
+        $g_{12}$ & $\alpha$   & $-0.1$                        & $\omega_r$  & $\SI{50}{rpm}$ \\
+        $g_{21}$ & $\beta$    & \SI{12}{\degree}              & $P_g$       & $\SI{-0.5}{\watt}$ \\
+        $g_{22}$ & $\alpha$   & $-0.1$                        & $P_g$       & $\SI{-0.7}{\watt}$ \\
+        $g_{D1}$ & $v_{wind}$ & $\SI{-1}{\metre\per\second}$  & $\omega_r$  & $\SI{-300}{rpm}$ \\
+        $g_{D2}$ & $v_{wind}$ & $\SI{-2}{\metre\per\second}$  & $P_g$       & $\SI{-2.3}{\watt}$ \\ \bottomrule
+    \end{tabular}
+    \label{tab:analysis:changes}
+\end{table}
+
+From left to right the first row of \autoref{tab:analysis:changes} can be read as: For figure $g_{11}$ the input $\beta$ is changed by \SI{7}{\degree} and will result in reducing the rotational speed $\omega_r$ by \SI{70}{rpm}.
+All six figures presented by Fragaso et al.~ can be recreated by the values given in \autoref{tab:analysis:changes}.
+\autoref{fig:analysis:recreate_step_changes} is one example representing the subfigure $g_{11}$ and using the values of the first row.
+
+\begin{figure}[h!]
+    \center
+    \includegraphics[scale=0.7,trim=60 200 50 150,clip]{fig/recreate_step_changes.pdf}
+    \caption{Recreating subfigure $g_{11}$ by plotting inputs, outputs and the disturbance over time. A pulse with a period of \SI{1200}{\second} and a pulse width of \SI{600}{\second} changes $\beta$ by \SI{7}{\degree}. This results in reducing the rotational speed $\omega_r$ by \SI{70}{rpm}.}
+    \label{fig:analysis:recreate_step_changes}
+\end{figure}
+
+
+
 \subsection{Relative Gain Array}  \label{sec:analysis:RGA}
+
+The relative gain array is used to obtain a measure of the dependencies of inputs and outputs for a MIMO-system.
+In this particular example we want to know the influence of rotational speed $\omega_r$ and the electrical power $P_g$ on pitch angle $\beta$ and duty cycle $\alpha$.
+
+
+The RGA-matrix is symmetric and all column- and row-sums a equal to one.
+For a $2\times2$-matrix we only need to calculate the element $(1,1)$ and deduce all other values.
+\begin{align}
+    \Lambda_{RGA} &= \begin{pmatrix}
+        \lambda_{11} & \lambda_{12} \\
+        \lambda_{21} & \lambda_{22}
+    \end{pmatrix}, \text{with} \\
+    & \lambda_{12} = \lambda_{21} \\
+    & \lambda_{11} + \lambda_{12} = 1 \\
+    & \lambda_{21} + \lambda_{22} = 1
+\end{align}
+
 
 \subsubsection*{Implementation in Matlab}
 
+
+\begin{lstlisting}[style=Matlab-editor,caption={This Matlab function calculates a $2\times2$-RGA-matrix},captionpos=b,label={list:analysis:RGA}]
+    function RGA = calculate_RGA(G_S_numerator)
+        % Computation of RGA
+        lambda_11 = G_S_numerator{1,1}/(G_S_numerator{1,1} - (G_S_numerator{1,2}*G_S_numerator{2,1})/G_S_numerator{2,2} );
+        RGA = [[lambda_11, 1-lambda_11];[1-lambda_11,lambda_11]];
+    end
+\end{lstlisting}
+    
+In line four the RGA-matrix is calculated.
+As previously described we only need to calculate  $\lambda_{11}$ and can deduce all other elements of $\Lambda$.
+
+    
+
 \subsubsection*{Results of RGA}
+
+The investigation of the RGA for different wind speeds provides clearly different dependencies between the inputs and states.
+The results are shown in \autoref{fig:analysis:RGA_results}.
+
+\begin{figure}[H]
+    \center
+    \includegraphics[scale=0.7,trim=40 180 0 120,clip]{fig/RGA_results.pdf}
+    \caption{Visualization of the five RGA-matrices and a line plot for $\lambda_{ii}$ and $\lambda_{ij}$.}
+    \label{fig:analysis:RGA_results}
+\end{figure}
+
+For very low windspeeds ($\SI{6}{\metre\per\second}$) the system is nearly decoupled.
+At a windspeed of $\SI{10}{\metre\per\second}$, the system can also be considered almost decoupled.
+If the the windspeed is approaching $\SI{8}{\metre\per\second}$ the peak coupling is reached.
+This behaviour can be best seen at the line plot.
+Both lines almost touch at a windspeed of $\SI{8}{\metre\per\second}$ and diverge before and after.
+
+The results achieved are congruent with the findings of Fragaso et al. (\cite[p. 7]{Fragoso_et_al_2017}, \cite[p. 123]{Fragoso_PhD_2016})
+
+In the following chapter we will design a controller for the \textit{hardest} condition of a coupled system with windspeeds of $\SI{8}{\metre\per\second}$.
