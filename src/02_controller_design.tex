@@ -2,6 +2,7 @@
 
 In the previous chapters only the open loop behaviour was analyzed.
 This section focuses on the controller design and closing the loops.
+Therfore this section describes the implementation of open and closed loop systems in Simulink (\autoref{sec:condes:implementation_simulink})
 Three different techniques for controller design are described.
 First, the Ziegler-Nichols method is shown (\autoref{sec:condes:ZN}).
 For this method, two different approximations for the required \textbf{f}irst-\textbf{o}rder-\textbf{p}lus-\textbf{t}ime-\textbf{d}elay transfer function (FOPTD) are used.
@@ -25,7 +26,7 @@ Here, the parameters are estimated by using the area under the s-shaped step res
 \end{figure}
 
 
-Third, the relay-feedback method (\autoref{sec:condes:Relayfeedback}) as an example of an auto-tuning methods characterizes the control parameters.
+%Third, the relay-feedback method (\autoref{sec:condes:Relayfeedback}) as an example of an auto-tuning methods characterizes the control parameters.
 
 In the end all methods are discussed and the robustness of some methods is shown (\autoref{sec:condes:discussion}).
 
@@ -122,7 +123,7 @@ end
     \caption{Results of PID controller design using Ziegler-Nichols.}
     \centering
     \begin{tabular}{cccccc} \toprule
-        Approximation & $v_{wind}$ &$P$ & $I$ & $D$ & Input-Output pair \\ \midrule
+        Approximation & $v_{wind}$ [\si{\metre\per\second}] &$P$ & $I$ & $D$ & Input-Output pair \\ \midrule
         max-slope     & 7 & -1.0567 & 6.0606  & 1.5152 & 1-1 \\
         two-point     & 7 & -0.4121 & 10.1010 & 2.5253 & 1-1 \\
         max-slope     & 8 & -1.0781 & 8.0808  & 2.0202 & 1-1 \\
@@ -150,14 +151,26 @@ Still, the sign of all control parameters and the differences are small.
 When the wind speed is changed (using a different transfer function) the proportional factor $P$ of the PID controller changes.
 The integral $I$ and derivative $D$ terms seem be constant.
 
-\subsection{T-Sum method} \label{sec:condes:Tsum}
+\subsection{T-sum method} \label{sec:condes:Tsum}
 
+For the input-output pair 2-2 we need to use the T-sum method.
+The transfer function is of first oder and so Ziegler-Nichols can not be applied.
+T-Sum tries to find a line where two integrals have the same area. 
+One is the area enclosed by the y-axis and the solution trajectory.
+The other area is border by the solution trajectory and the $y_{max}$-value.
+By shifting the dashed line seen in \autoref{fig:condes:tsum:example} on the $y$-axis the optimal point of equal areas is found.
+The calculated value $T_{\Sigma}$ is used to determine the controller parameters.
+\begin{align}
+    P &= \frac{1}{K} \\
+    I &= 0.667 \cdot T_{\Sigma} \\
+    D &= 0.167 \cdot T_{\Sigma}
+\end{align}
 
 \begin{table}[H]
     \caption{Results of PID controller design using T-Sum method.}
     \centering
     \begin{tabular}{ccccc} \toprule
-        $v_{wind}$ &$P$ & $I$ & $D$ & Input-Output pair \\ \midrule
+        $v_{wind}$ [\si{\metre\per\second}] &$P$ & $I$ & $D$ & Input-Output pair \\ \midrule
         7 & 0.1724 & 0.6737 & 0.1687 & 2-2 \\
         8 & 0.1479 & 0.6737 & 0.1687 & 2-2 \\ 
         9 & 0.1240 & 0.6737 & 0.1687 & 2-2 \\ \bottomrule
@@ -172,8 +185,95 @@ The integral $I$ and derivative $D$ terms seem be constant.
     \label{fig:condes:tsum:example}
 \end{figure}
 
-\subsection{Relay-feedback method} \label{sec:condes:Relayfeedback}
+\autoref{fig:condes:tsum:example} shows one possible downside of the T-sum method. 
+When simulating the system the resulting solution is a discrete vector.
+The T-sum method 
 
-\subsection{Implementation in Matlab} \label{sec:condes:implementation_matlab}
+%\subsection{Relay-feedback method} \label{sec:condes:Relayfeedback}
 
-\subsection{Discussion of different methods} \label{sec:condes:discussion}
+\subsection{Implementation in Simulink} \label{sec:condes:implementation_simulink}
+
+In the previous subsection the design of the controller is discussed.
+Now, the implementation of the closed and open loop is addressed.
+In contrast to the controller design the closed and open loop is implemented in Simulink.
+
+\subsubsection*{Open loop} \label{sec:condes:implementation_simulink:open_loop}
+
+In general two different approaches for the implementation are possible.
+The transfer function can be arranged as a structured flow diagram (\autoref{fig:condes:implementation:structure}).
+In this case each transfer function is implemented individually in a single Simulink \texttt{tf-block}.
+One advantage is that the overall structure of the system is visible and all \textit{flows of informations} are visible.
+Otherwise, this implementation is more complex and therefore more error-prone.
+
+The second case is a more condensed implementation (\autoref{fig:condes:implementation:block}).
+In this, only two Simulink \texttt{LTI}-blocks are used for the system $G$ and the disturbance $G_D$.
+
+\begin{figure}[H]
+    \centering
+
+    \subcaptionbox{Implementation as a structure \label{fig:condes:implementation:structure}}[.48\textwidth]{\includegraphics[width=1\linewidth, scale=1, trim=0 0 0 0,clip]{fig/Simulink/simulink_tf_structure.png}}
+%
+    \subcaptionbox{Implementation as blocks  \label{fig:condes:implementation:block}}[.48\textwidth]{\includegraphics[width=1\linewidth, scale=1, trim=0 0 0 0,clip]{fig/Simulink/simulink_tf_block.png}}
+
+    \caption{Comparing the two different approaches as Simulink block diagrams. The \textit{structured} implementation (\texttt{transfer\_function\_structured.slx}) reveals much more details about the internal dependencies. A more condensed view is seen for the \textit{block} implementation (\texttt{transfer\_function\_as\_block.slx}).}
+    \label{fig:condes:implementation:two_approaches}
+\end{figure}
+
+To check the implementation it is good to use both implementation in parallel and check if both are getting the same results.
+For further investigation the \textit{structured} implementation can be used.
+This has the advantage that \textit{internal flows} or states can be monitored with Simulinks \texttt{scope}- or \texttt{out}-blocks.
+
+\begin{figure}[H]
+    \center
+    \includegraphics[width=1\textwidth,scale=1,trim=0 0 0 0,clip]{fig/Simulink/simulink_open_loop.png}
+    \caption{The open loop system with a parallel execution of \textit{structured} and \textit{block} implementation. This figure is showing the \texttt{step\_response\_open\_loop.slx}-file.}
+    \label{fig:condes:implementation:openloop}
+\end{figure}
+
+The Simulink file shown in \autoref{fig:condes:implementation:openloop} has three outputs.
+First outputs return the open loop behaviour for the \texttt{block} implementation, the second output for the \texttt{structured} implementation. 
+The third \texttt{output}-block is to check the inputs into the system.
+
+On the left side of the simulink diagram for each of the three inputs $v_{wind}$ (disturbance), $\beta$ and $\alpha$ (from top to down) an \texttt{switch}-block is used.
+These \texttt{switch}-blocks allow to choose via a flag set in a Matlab script which input should have a pulse applied to.
+The pulse is produced by an \texttt{pulse}-block in Simulink.
+
+\autoref{list:condes:implementation:flags} shows how to choose different scenarios depending on flags and \texttt{if}-blocks.
+Lines 7 ff. determine which pulse is given to system.
+If the variable is set to $0$ the input does not have a pulse signal applied to, but it is constant $0$.
+In the given example only $\beta$ will receive a pulse of magnitude \SI{7}{\degree} and a width of \SI{600}{\second} after \SI{600}{\second} of simulation time.
+
+\begin{lstlisting}[style=Matlab-editor,caption={Setting flags for different combination of input pulses.},captionpos=b,label={list:condes:implementation:flags}]
+% Setting amplitudes for pulse
+simP.A_beta = 7;
+simP.A_alpha = -.1;
+simP.A_wind = -2;
+
+% Determine if pulse of zero for inputs and disturbance
+simP.bool_beta = 1;
+simP.bool_alpha = 0;
+simP.bool_wind = 0;
+
+% Simulation paramters
+simP.t_simulation = 2000; % Time for simulation [s]
+simP.T_period = 1200;     % Peroid of pulse [s]
+simP.T_delay = 600;       % Delay for first pulse [s]
+simP.pulse_width = 50;    % Pulse width in % of T_Period [%]
+\end{lstlisting}
+
+
+\subsubsection*{Closed loop} \label{sec:condes:implementation_simulink:closed_loop}
+
+When the designed controllers are tested the loop must be closed.
+
+\begin{figure}[H]
+    \center
+    \includegraphics[width=1\textwidth,scale=1,trim=0 0 0 0,clip]{fig/Simulink/simulink_closed_loop.png}
+    \caption{The closed loop with a \texttt{PID}-controller block, both reference signals and a possible disturbance due to wind. This figure is showing the \texttt{closed\_loop\_PID.slx}-file.}
+    \label{fig:condes:implementation:closedloop}
+\end{figure}
+
+For possible disturbance due to a change in wind speed a \texttt{step}- and a \texttt{noise}-block is added.
+With this setup, not only can the wind change drastically (step change) but also naturally occurring fluctuation can be simulated.
+After the \texttt{PID}-block a \texttt{saturation}-block is added.
+\autoref{sec:condes:discussion} discusses the need of having a saturation block, which enforces the limitations of input signals shown in \autoref{tab:analysis:constraints}.
