@@ -31,6 +31,8 @@
 
     % For source code
     \usepackage{matlab-prettifier}
+    % Multi rows for tables
+    \usepackage{multirow}
     \lstset{
 numbers=left, 
 numberstyle=\small, 
@@ -63,8 +65,11 @@ framexleftmargin=15pt}
 \include{src/00_intro}
 \include{src/01_system_analysis}
 \include{src/02_controller_design}
+\include{src/03_discussion}
+
 \appendix
 \include{src/90_appendix_code.tex}
+\include{src/91_appendix_cl_results.tex}
 
 %\include{src/1_system_derivation}
 %\include{src/2_controler_design}
