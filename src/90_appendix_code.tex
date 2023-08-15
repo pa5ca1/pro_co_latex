@@ -71,3 +71,37 @@ T_d = t_63 - T;
 K = y_inf;
 
 \end{lstlisting}
+
+
+\subsection*{T-sum Method}
+
+\begin{lstlisting}[style=Matlab-editor,caption={Implementation of two-point method in Matlab.},captionpos=b,label={list:app:two_point_method}]
+    
+[y,t_out] = step(G,t_linspace);
+% Get K and plot it
+K = max(y);
+% Find T_sum
+N = size(t_out,1);
+delta_A = zeros(1,N);
+delta_T = gradient(t_out);
+
+
+for n=1:N
+    T_sum = t_out(n);
+    T_delta = t_out(end)-T_sum;
+    A_1 = sum(y(1:n).*delta_T(1:n));
+    A_2_hat = sum(y(n+1:end).*delta_T(n+1:end));
+    A_2 = K*T_delta - A_2_hat;
+    delta_A(n) = abs(A_1-A_2);
+end
+[~, index_min_delta_A] = min(delta_A);
+T_sum = t_out(index_min_delta_A);
+
+% Calculate PID values
+PID.K_p = 1/K;
+PID.T_I = 0.667 * T_sum;
+PID.T_D = 0.167 * T_sum;
+\end{lstlisting}
+
+
+
