@@ -1,22 +1,23 @@
 \section{Controller Design} \label{sec:condes}
 
-In the previous chapters only the open loop behaviour was analyzed.
-This section focuses on the controller design and closing the loops.
-Therfore this section describes the implementation of open and closed loop systems in Simulink (\autoref{sec:condes:implementation_simulink})
-Three different techniques for controller design are described.
+In the previous sections only the open loop behaviour is analyzed.
+This section focuses on the controller design and closing the loop.
+Therefore, this section describes the implementation of open and closed loop systems in Simulink (\autoref{sec:condes:implementation_simulink})
+
+Two different techniques for controller design are described.
 First, the Ziegler-Nichols method is shown (\autoref{sec:condes:ZN}).
 For this method, two different approximations for the required \textbf{f}irst-\textbf{o}rder-\textbf{p}lus-\textbf{t}ime-\textbf{d}elay transfer function (FOPTD) are used.
-The max slope method (\autoref{sec:condes:ZN:maxS}) uses the inflection point of the step resoponse to determine the control parameters.
-In contrast, the two-point method (\autoref{sec:condes:ZN:2p}) does not use derivatives, but the points in time at which the step response has assumed 28\% or 63\% of its maximum value.
+The max-slope method (\autoref{sec:condes:ZN:maxS}) uses the inflection point of the step resoponse to determine the control parameters.
+In contrast, the two-point method (\autoref{sec:condes:ZN:2p}) does not use derivatives, instead the points in time at which the step response has risen to 28\% or 63\% of its maximum value.
 As a result, the method is also considered to be numerically more stable.
 
-Second, the T-sum method (\autoref{sec:condes:Tsum}) is used to determine control parameters for a PID-controller.
-Here, the parameters are estimated by using the area under the s-shaped step response.
+Second, the T-sum method (\autoref{sec:condes:Tsum}) is used to determine control parameters for a PID controller.
+Here, the parameters are estimated by using the area under the step response.
 
 \begin{figure}[H]
     \centering
 
-    \subcaptionbox{Max slope approximation\cite[Lecture 6, slide 12]{Dissli_Kienle_2023} \label{fig:condes:different_methods_maxSlope}}[.45\textwidth]{\includegraphics[width=1\linewidth]{fig/Dissli_Kienle_max_slope_2023.png}}
+    \subcaptionbox{Max-slope approximation\cite[Lecture 6, slide 12]{Dissli_Kienle_2023} \label{fig:condes:different_methods_maxSlope}}[.45\textwidth]{\includegraphics[width=1\linewidth]{fig/Dissli_Kienle_max_slope_2023.png}}
 %
     \subcaptionbox{T-sum method \cite[Lecture 6, slide 17]{Dissli_Kienle_2023} \label{fig:condes:different_methods_Tsum}}[.45\textwidth]{\includegraphics[width=1\linewidth]{fig/Dissli_Kienle_T_sum_2023.png}}
 \\
@@ -34,29 +35,29 @@ In the end all methods are discussed and the robustness of some methods is shown
 
 \subsection{Ziegler-Nichols open loop method}\label{sec:condes:ZN}
 
-The Ziegler-Nichols open loop method characterises assumes an s-shape step response and an underlying first-order-plus-time-delay transfer function.
-Looking at the given transfer function by Fragoso et al.~ (\cite[Table 2]{Fragoso_et_al_2017}), we do not have this behaviour.
+The Ziegler-Nichols open loop method assumes an s-shape step response or an underlying first-order-plus-time-delay transfer function, respectively.
+Looking at the given transfer function by Fragoso et~al. (\cite[Table 2]{Fragoso_et_al_2017}), we do not have this behaviour.
 Therefore, we need to approximate a FOPTD transfer function.
 This can be done with two different approaches.
-First, the max slope approximation is used for controller design and second, the two-point method determines the controller's parameters.
+First, the max-slope approximation is used for controller design and second, the two-point method determines the controller's parameters.
 
 In the following two subsection both methods and their Matlab implementation is discussed. 
 
 
-\subsubsection{Max slope approximation} \label{sec:condes:ZN:maxS}
+\subsubsection{Max-slope approximation} \label{sec:condes:ZN:maxS}
 
-The max slope method focuses around the inflection point of the unit step response.
+The max-slope method focuses around the inflection point of the unit step response.
 
-\begin{lstlisting}[style=Matlab-editor,caption={This code snippet show the general way of calculating the control parameters with the max slope method.},captionpos=b,label={list:condes:maxS}]
+\begin{lstlisting}[style=Matlab-editor,caption={This code snippet show the general way of calculating the control parameters with the max-slope method.},captionpos=b,label={list:condes:maxS}]
 [y,t_out] = step(G,t_linspace);
 [slope, intcpt] = calc_infliction_point_slope(y,t_out);
 tngt = slope*t_out + intcpt;
 [K, T, T_d, t_inter] = calc_gain_time_const_time_delay(y,t_out,tngt);
 \end{lstlisting}
 
-In line 1 the step response of a transfer function $G$ with the matlab built-in-function \texttt{step()} is calculated.
-\texttt{calc\_infliction\_point\_slope()} calculates the infliction point and returns the slope (\texttt{slope}) and y-interception (\texttt{intcpt}).
-With these two values the tangent (\texttt{tngt}) is calculates in line 3 and in line 4 the variables needed for calculation of the control parameters are returned (\texttt{calc\_gain\_time\_const\_time\_delay()}).
+In line 1 the step response of a transfer function \texttt{G} with the Matlab built-in-function \texttt{step()} is calculated.
+\texttt{calc\_infliction\_point\_slope()} calculates the infliction point and returns the slope (\texttt{slope}) and y-interception (\texttt{intcpt}) of the tangent at that point.
+With these two values the tangent (\texttt{tngt}) is calculated in line 3 and in line 4 the variables needed for calculation of the control parameters are returned (\texttt{calc\_gain\_time\_const\_time\_delay()}).
 
 The \texttt{calc\_infliction\_point\_slope()}-function calculates the gradient using Matlabs \texttt{gradient()}-function and computes slope and y-interception from this.
 
@@ -76,9 +77,7 @@ These values are calculated via Matlab and used to compute $T$, $T_d$ and $K$.
     K &= y_{\infty}
 \end{align}
 
-
-
-In matlab the computation relies on the \texttt{interp1()}-function for getting the $t$-values after calculation of $y_{28,63}$.
+In matlab the computation relies on the \texttt{interp1()}-function.
 
 \begin{lstlisting}[style=Matlab-editor,caption={This code snippet shows the general way of calculating $t_{28}$ and $t_{63}$.},captionpos=b,label={list:condes:maxS}]
 [y,t] = step(G,t_linspace);
@@ -96,18 +95,17 @@ t_28 = interp1(y_out,t_out,y_28);
 t_63 = interp1(y_out,t_out,y_63);
 \end{lstlisting}
 
-First, the y-values for 28\% and 63\% are computed in matlab.
-Second, the corresponding $t$-values are calculated using the built-in \texttt{interp1()}-function for interpolation.
+First, $y_{28,63}$ is calculated and afterwards $t_{28,63}$ is computed by interpolation.
+%Second, the corresponding $t$-values are calculated using the built-in \texttt{interp1()}-function for interpolation.
 In line 9 the \texttt{unique()}-function returns all values of \texttt{y} without repetition.
-This step is important for the later interpolation.
+This step is important for the later interpolation in line 12 f.
 
 
 \subsubsection{Results} \label{sec:condes:ZN:results}
 
-Before presenting the results an Matlab specific issue in PID controller implementation must be adressed.
-The Simulink PID-block uses the another notation for the PID controller's paraemter, therefore a conversion is needed. 
+Before presenting the results an Matlab specific issue with PID controller implementation must be addressed.
+The Simulink \texttt{PID}-block uses the another notation for the PID controller's parameter, therefore a conversion is needed. 
 This conversion is shown in \autoref{list:condes:conersion_PID_para}.
-
 
 \begin{lstlisting}[style=Matlab-editor,caption={Conversion of the parameters calculated by the previously mentioned algorithms and the values required for Simulink PID block in Matlab.},captionpos=b,label={list:condes:conersion_PID_para}]
 function PID_ideal = matlab_PID_paremters(PID)
@@ -137,7 +135,7 @@ end
 \begin{figure}[H]
     \centering
 
-    \subcaptionbox{Max slope \label{fig:condes:ZN:results:max_slope_example}}[.48\textwidth]{\includegraphics[width=1\linewidth, scale=1, trim=75 230 55 120,clip]{fig/G_11_max_slope_8ms.pdf}}
+    \subcaptionbox{Max-slope \label{fig:condes:ZN:results:max_slope_example}}[.48\textwidth]{\includegraphics[width=1\linewidth, scale=1, trim=75 230 55 120,clip]{fig/G_11_max_slope_8ms.pdf}}
 %
     \subcaptionbox{Two-point \label{fig:condes:ZN:results:2p_example}}[.48\textwidth]{\includegraphics[width=1\linewidth, scale=1, trim=75 230 55 120,clip]{fig/G_11_2p_8ms.pdf}}
 
@@ -145,21 +143,20 @@ end
     \label{fig:condes:ZN:results:example_plots}
 \end{figure}
 
-In \autoref{fig:condes:ZN:results:example_plots} we can clearly see the different approximation.
-This results in different control parameters in \autoref{tab:condes:ZN:results}.
-Still, the sign of all control parameters and the differences are small.
+In \autoref{fig:condes:ZN:results:example_plots} we can clearly see the difference of approximation comparing max-slope and two-point method.
+The result of the difference in approximation are different control parameter (\autoref{tab:condes:ZN:results}).
+Still, the sign of all control parameters are equal and the differences are small.
 When the wind speed is changed (using a different transfer function) the proportional factor $P$ of the PID controller changes.
 The integral $I$ and derivative $D$ terms seem be constant.
 
 \subsection{T-sum method} \label{sec:condes:Tsum}
 
-For the input-output pair 2-2 we need to use the T-sum method.
-The transfer function is of first oder and so Ziegler-Nichols can not be applied.
+For the input-output pair 2-2 we use the T-sum method.
 T-Sum tries to find a line where two integrals have the same area. 
 One is the area enclosed by the y-axis and the solution trajectory.
-The other area is border by the solution trajectory and the $y_{max}$-value.
+The other area is border by the solution trajectory and the $y_{\infty}$-value.
 By shifting the dashed line seen in \autoref{fig:condes:tsum:example} on the $y$-axis the optimal point of equal areas is found.
-The calculated value $T_{\Sigma}$ is used to determine the controller parameters.
+The controller's parameters are calculated by $T_{\Sigma}$.
 \begin{align}
     P &= \frac{1}{K} \\
     I &= 0.667 \cdot T_{\Sigma} \\
@@ -185,9 +182,8 @@ The calculated value $T_{\Sigma}$ is used to determine the controller parameters
     \label{fig:condes:tsum:example}
 \end{figure}
 
-\autoref{fig:condes:tsum:example} shows one possible downside of the T-sum method. 
-When simulating the system the resulting solution is a discrete vector.
-The T-sum method 
+%\autoref{fig:condes:tsum:example} shows one possible downside of the T-sum method. 
+%When simulating the system the resulting solution is a discrete vector.
 
 %\subsection{Relay-feedback method} \label{sec:condes:Relayfeedback}
 
@@ -195,7 +191,7 @@ The T-sum method
 
 In the previous subsection the design of the controller is discussed.
 Now, the implementation of the closed and open loop is addressed.
-In contrast to the controller design the closed and open loop is implemented in Simulink.
+In contrast to the controller design, the closed and open loop is implemented in Simulink.
 
 \subsubsection*{Open loop} \label{sec:condes:implementation_simulink:open_loop}
 
@@ -231,16 +227,16 @@ This has the advantage that \textit{internal flows} or states can be monitored w
 \end{figure}
 
 The Simulink file shown in \autoref{fig:condes:implementation:openloop} has three outputs.
-First outputs return the open loop behaviour for the \texttt{block} implementation, the second output for the \texttt{structured} implementation. 
+\texttt{out1} returns the open loop behaviour for the \texttt{block} implementation, the second output (\texttt{out2}) for the \texttt{structured} implementation. 
 The third \texttt{output}-block is to check the inputs into the system.
 
-On the left side of the simulink diagram for each of the three inputs $v_{wind}$ (disturbance), $\beta$ and $\alpha$ (from top to down) an \texttt{switch}-block is used.
+For each of the three inputs $v_{wind}$ (disturbance), $\beta$ and $\alpha$ (from top to down) a \texttt{switch}-block is used (see left side of the Simulink diagram).
 These \texttt{switch}-blocks allow to choose via a flag set in a Matlab script which input should have a pulse applied to.
 The pulse is produced by an \texttt{pulse}-block in Simulink.
 
-\autoref{list:condes:implementation:flags} shows how to choose different scenarios depending on flags and \texttt{if}-blocks.
+\autoref{list:condes:implementation:flags} shows how to choose different scenarios depending on flags and \texttt{switch}-blocks.
 Lines 7 ff. determine which pulse is given to system.
-If the variable is set to $0$ the input does not have a pulse signal applied to, but it is constant $0$.
+If the variable is set to $0$ the input does not have a pulse signal applied to, and it is constant $0$.
 In the given example only $\beta$ will receive a pulse of magnitude \SI{7}{\degree} and a width of \SI{600}{\second} after \SI{600}{\second} of simulation time.
 
 \begin{lstlisting}[style=Matlab-editor,caption={Setting flags for different combination of input pulses.},captionpos=b,label={list:condes:implementation:flags}]
@@ -274,6 +270,6 @@ When the designed controllers are tested the loop must be closed.
 \end{figure}
 
 For possible disturbance due to a change in wind speed a \texttt{step}- and a \texttt{noise}-block is added.
-With this setup, not only can the wind change drastically (step change) but also naturally occurring fluctuation can be simulated.
+With this setup, not only can the wind change drastically (step change, boe) but also naturally occurring fluctuation can be simulated.
 After the \texttt{PID}-block a \texttt{saturation}-block is added.
 \autoref{sec:condes:discussion} discusses the need of having a saturation block, which enforces the limitations of input signals shown in \autoref{tab:analysis:constraints}.

@@ -6,34 +6,35 @@ First, the description of the ODE system, which is insufficient for an implement
 
 Second, the implementation of the system via transfer function is introduced \autoref{sec:analysis:tf}.
 All important steps to implement the system in Matlab are shown.
-By using figures published by Fragoso et al.– \cite{Fragoso_et_al_2017} the implementation in Matlab is verified.
+By using figures published by Fragoso et~al. \cite{Fragoso_et_al_2017} the implementation in Matlab is verified.
 
-The following chapter (\autoref{sec:condes}) is dealing with controller design. One important step of controller design is the relative gain array, which is conducted at the end of tis section.
+The following chapter (\autoref{sec:condes}) is dealing with controller design.
+One important step of controller design is the relative gain array, which is conducted at the end of this section.
 
 \subsection{Simulation of ODE system} \label{sec:analysis:ODE}
 
-Fragoso et al.~ \cite{Fragoso_et_al_2017} present a system of ODE for the wind turbine model.
+Fragoso et~al. \cite{Fragoso_et_al_2017} present a system of ODE for the wind turbine model.
 As described in \autoref{sec:intro:model_eq} the model is subdivided into two parts.
-The electrical subsystem is based in on two algebraic equations (\autoref{eq:intro:tau_em}, \autoref{eq:intro:P_g}).
+The electrical subsystem is based on two algebraic equations (\autoref{eq:intro:tau_em}, \autoref{eq:intro:P_g}).
 
 For the mechanical part an ODE is given
 \begin{align}
     J_t \frac{d \omega_t}{dt} = \tau_a - \tau_{em}, \label{eq:analysis:ODE_mechanical}
 \end{align}
-where $\tau_a$ is the aerodynamic torque and defined as
+where $\tau_a$ is the aerodynamic torque.
 \begin{align}
-    \tau_a = \frac{1}{2} \rho \pi R^3 \frac{C_p\left( \lambda, \beta\right)}{\lambda} v^2.
+    \tau_a = \frac{1}{2} \rho \pi R^3 \frac{C_p\left( \lambda, \beta\right)}{\lambda} v^2
 \end{align}
 The power coefficient $C_p$ is only described by a figure (see Figure 4 in \cite{Fragoso_et_al_2017}).
-In Fragosos work \cite[p. 54 ff.]{Fragoso_PhD_2016} a function for $C_p$ is derived and also a figure shows the global course of the function (see Figure 3.8, p. 56).
+In Fragoso's work \cite[p. 54 ff.]{Fragoso_PhD_2016} a function for $C_p$ is derived and a figure shows the global course of the function (see Figure 3.8, p. 56).
 In this function nine heuristic parameters are used to determine the characteristics.
-It is unclear if this function is also used in the work of Fragoso et al.~ or not.
+It is unclear if this function is also used in the work of Fragoso et~al. or not.
 
-In the appendix of Fragosos PhD-thesis there are tabulated value for $C_p$.
-These were implemented as a lookuptable in Matlab.
-By using the lookup table, values for $C_p$ could be determined, but the solutions of the ODE were not in a realistic range of values.
+The appendix of Fragoso's PhD-thesis contains tabulated value for $C_p$.
+These were implemented as a look uptable in Matlab.
+By using the lookup table, values for $C_p$ could be determined, but the solutions of the ODE were not in a realistic range.
 
-\begin{lstlisting}[style=Matlab-editor,caption={Matlab function for lookuptable. With this function we can get a corresponding $C_p$ value for given $\beta$ and $\lambda$. The \texttt{.csv}-file can be found in the GitHub repository under},captionpos=b,label={list:analysis:lookup}]
+\begin{lstlisting}[style=Matlab-editor,caption={Matlab function for look uptable. With this function we can get a corresponding $C_p$ value for given $\beta$ and $\lambda$. The \texttt{.csv}-file can be found in the GitHub repository},captionpos=b,label={list:analysis:lookup}]
 % Loading tabulated values as .csv file
 p.lookup = readtable('lookuptable_c_p.csv');
 % Setting corresponding column names 
@@ -45,15 +46,15 @@ function C_p = power_coefficient(lambda,beta,lookup)
 end
 \end{lstlisting}
 
-Even if it is possible to get correct values for $C_p$, we still have only one ODE and a algebraic equation.
+Even, if it is possible to get correct values for $C_p$, we still have only one ODE and an algebraic equation.
 This is not representing a systems with two systems states.
 
-Due to the problems mentioned here, the representation and solution of the system in state space was not pursued further and the transfer function mentioned in the Fragose et al.~ was used instead.
+Due to the problems mentioned here, the representation and solution of the system in state space was not pursued further and the transfer function mentioned in Fragoso et~al. was used instead.
 
 \subsection{Implementation of transfer function model} \label{sec:analysis:tf}
 
 All controllers will be designed based on a linear model.
-For different wind speeds $v$ Fragoso et al.~ identified five different linear models.
+For different wind speeds $v_{wind}$ Fragoso et~al. identified five different linear models.
 The pitch angel $\beta$ and the duty cycle $\alpha$ are the systems states.
 The outputs are the rotational speed of the blade $\omega_r$ and the generated electric power $P_g$.
 \begin{align}
@@ -88,7 +89,7 @@ The results can be found in \cite[Table 2]{Fragoso_et_al_2017} and will not be r
 
 \subsubsection*{Implementation in Matlab}
 
-To generate the transfer functions in Matlab the \texttt{tf}-command and the \texttt{table} function are used.
+To generate the transfer functions in Matlab the \texttt{tf}-command and the \texttt{table}-function are used.
 
 \begin{lstlisting}[style=Matlab-editor,caption={},captionpos=b,label={list:analysis:tf}]
 % Wind speed: 6 m/s
@@ -119,7 +120,7 @@ for i = 1:5
 end
 \end{lstlisting}
 
-For each transfer function modeling the system behaviour for different wind speeds we have a numerator and denominator for the systems transfer function $G$ and the disturbance system $G_D$.
+Each linear model of the system behaviour for different wind speeds has a numerator and denominator for the systems transfer function $G$ and the disturbance system $G_D$.
 Those are stored as arrays \texttt{G\_num\_6}, \texttt{G\_D\_denom\_6}, etc.~, where the 6 at the end depicting the transfer function for a wind speed of $\SI{6}{\metre \per \second}$.
 
 In line 17 ff. the numerator and denominator of all transfer function are stored in the table initialized in line 12.
@@ -128,7 +129,7 @@ In line 14 every column of the table gets a name.
 
 \subsubsection{Verifying the implementation}
 
-The goal of verification is the recreation of relative step responses shown by Fragoso et al.~(\autoref{fig:analysis:fig_step_response}).
+The goal of verification is the recreation of relative step responses shown by Fragoso et~al.(\autoref{fig:analysis:fig_step_response}).
 The figure is used as a benchmark.
 If the global course of the step response can be readjusted, then one can assume that the model is implemented correctly.
 
@@ -141,7 +142,7 @@ If the global course of the step response can be readjusted, then one can assume
 
 The six figures are labeled as $g_{ij}$ as changing input $i$ and showing the influence on output $j$.
 The bottom two are referring to the influence of disturbance changes (changes in wind speed) when inputs are changed.
-Unfortunately the exact values are not given in the paper and therefore must be reverse engineered.
+Unfortunately, the exact values for step changes are not given in the paper and must be reverse engineered (\autoref{tab:analysis:changes}).
 
 \begin{table}[H]
     \caption{The tables shows the influence of an input to a single output. The table can be seen as an other way of displaying the results from \autoref{fig:analysis:fig_step_response}.}
@@ -159,7 +160,7 @@ Unfortunately the exact values are not given in the paper and therefore must be 
 \end{table}
 
 From left to right the first row of \autoref{tab:analysis:changes} can be read as: For figure $g_{11}$ the input $\beta$ is changed by \SI{7}{\degree} and will result in reducing the rotational speed $\omega_r$ by \SI{70}{rpm}.
-All six figures presented by Fragaso et al.~ can be recreated by the values given in \autoref{tab:analysis:changes}.
+All six figures presented by Fragoso et~al. can be recreated by the values given in \autoref{tab:analysis:changes}.
 \autoref{fig:analysis:recreate_step_changes} is one example representing the subfigure $g_{11}$ and using the values of the first row.
 
 \begin{figure}[h!]
@@ -224,6 +225,6 @@ If the the windspeed is approaching $\SI{8}{\metre\per\second}$ the peak couplin
 This behaviour can be best seen at the line plot.
 Both lines almost touch at a windspeed of $\SI{8}{\metre\per\second}$ and diverge before and after.
 
-The results achieved are congruent with the findings of Fragaso et al. (\cite[p. 7]{Fragoso_et_al_2017}, \cite[p. 123]{Fragoso_PhD_2016})
+The results achieved are congruent with the findings of Fragoso et~al. (\cite[p. 7]{Fragoso_et_al_2017}, \cite[p. 123]{Fragoso_PhD_2016})
 
 In the following chapter we will design a controller for the \textit{hardest} condition of a coupled system with windspeeds of $\SI{8}{\metre\per\second}$.
